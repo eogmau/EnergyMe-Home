@@ -1,5 +1,4 @@
-#ifndef ADE7953_H
-#define ADE7953_H
+#pragma once
 
 #include <AdvancedLogger.h>
 #include <Arduino.h>
@@ -12,7 +11,6 @@
 #include "customtime.h"
 #include "binaries.h"
 #include "constants.h"
-#include "global.h"
 #include "structs.h"
 #include "utils.h"
 
@@ -26,12 +24,15 @@ public:
         int mosiPin,
         int resetPin,
         AdvancedLogger &logger,
-        CustomTime &customTime); 
+        CustomTime &customTime,
+        MainFlags &mainFlags
+    );
 
     bool begin();
     void loop();
 
     void readMeterValues(int channel);
+    void purgeEnergyRegister(int channel);
 
     bool isLinecycFinished();
 
@@ -59,7 +60,7 @@ public:
     int findNextActiveChannel(int currentChannel);
 
     JsonDocument singleMeterValuesToJson(int index);
-    JsonDocument meterValuesToJson();
+    void meterValuesToJson(JsonDocument &jsonDocument);
 
     MeterValues meterValues[CHANNEL_COUNT];
     ChannelData channelData[CHANNEL_COUNT];
@@ -77,7 +78,6 @@ private:
     void _applyConfiguration(JsonDocument &jsonDocument);
     bool _validateConfigurationJson(JsonDocument &jsonDocument);
     
-    void _setDefaultCalibrationValuesOnly();
     void _setCalibrationValuesFromSpiffs();
     void _jsonToCalibrationValues(JsonObject &jsonObject, CalibrationValues &calibrationValues);
     bool _validateCalibrationValuesJson(JsonDocument &jsonDocument);
@@ -86,6 +86,9 @@ private:
     void _setChannelDataFromSpiffs();
     void _updateChannelData();
     bool _validateChannelDataJson(JsonDocument &jsonDocument);
+
+    Phase _getLaggingPhase(Phase phase);
+    Phase _getLeadingPhase(Phase phase);
 
     void _updateSampleTime();
 
@@ -104,6 +107,7 @@ private:
     long _readReactiveEnergy(int channel);
     long _readApparentEnergy(int channel);
     long _readPowerFactor(int channel);
+    long _readAngle(int channel);
 
     float _validateValue(float oldValue, float newValue, float min, float max);
     float _validateVoltage(float oldValue, float newValue);
@@ -111,13 +115,11 @@ private:
     float _validatePower(float oldValue, float newValue);
     float _validatePowerFactor(float oldValue, float newValue);
 
-    void _setLinecyc(long linecyc);
+    void _setLinecyc(unsigned int linecyc);
     void _setPgaGain(long pgaGain, int channel, int measurementType);
     void _setPhaseCalibration(long phaseCalibration, int channel);
     void _setGain(long gain, int channel, int measurementType);
     void _setOffset(long offset, int channel, int measurementType);
-
-    int _getActiveChannelCount();
 
     int _ssPin;
     int _sckPin;
@@ -125,10 +127,11 @@ private:
     int _mosiPin;
     int _resetPin;
 
+    unsigned int _sampleTime;
+
     AdvancedLogger &_logger;
     CustomTime &_customTime;
+    MainFlags &_mainFlags;
 
     unsigned long _lastMillisSaveEnergy = 0;
 };
-
-#endif
